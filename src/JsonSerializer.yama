@@ -1,0 +1,117 @@
+namespace "System.Text"
+{
+    using "System";
+    using "System.Reflection";
+
+    public static class JsonSerializer
+    {
+
+        public static object DeSerialize(RefString source, TypeInfo type)
+        {
+
+
+
+            object result = type.GetNewInstance();
+
+            return result;
+        }
+
+    }
+
+    public struct JsonTokenizer
+    {
+
+        #region vars
+
+        public int Start;
+        public int Length;
+        public int TokenLength;
+        public string Source;
+
+        public int TokenKind;
+
+        #endregion vars
+
+        public static JsonTokenizer Initilize(RefString source)
+        {
+            Result.Source = source.Source;
+            Result.Start = source.Start;
+            Result.Length = source.Length;
+            Result.TokenLength = 0;
+            Result.TokenKind = JsonTokenKind.None;
+
+            return Result;
+        }
+
+        public bool NextToken()
+        {
+            int start = this.Start + this.TokenLength;
+            if (start >= this.Length) return false;
+
+            int length = this.Length - this.TokenLength;
+            RefString iterator = RefString.Pack(this.Source);
+            iterator.Start = start;
+            iterator.Length = length;
+
+            for (int i = 0; i < length; i = i + 1)
+            {
+                char content = (iterator.Data[i]) as char;
+                if (content.IsWhitespace()) continue;
+                if (content.IsNumber()) return this.FindTokenNumber(i, iterator);
+            }
+
+            return false;
+        }
+
+        private bool FindTokenNumber(int start, RefString iterator)
+        {
+            this.Start = this.Start + start;
+            iterator.Start = this.Start;
+
+            this.TokenKind = JsonTokenKind.Number;
+
+            int length = iterator.Length - start;
+            this.TokenLength = 0;
+            for (int i = 0; i < length; i = i + 1)
+            {
+                char content = (iterator.Data[i]) as char;
+                if (content.IsNumber())
+                {
+                    this.TokenLength = this.TokenLength + 1;
+                    continue;
+                }
+
+                break;
+            }
+
+            return true;
+        }
+
+        public RefString GetCurrent()
+        {
+            Result.Source = this.Source;
+            Result.Start = this.Start;
+            Result.Length = this.TokenLength;
+
+            return Result;
+        }
+
+        public this ~()
+        {
+
+        }
+
+    }
+
+    public enum JsonTokenKind
+    {
+        None = 0x1,
+        OpenBracket = 0x2,
+        CloseBracket = 0x3,
+        Comma = 0x4,
+        Text = 0x5,
+        Number = 0x6,
+        Boolean = 0x7,
+        AssigmentOperator = 0x8
+    }
+}
