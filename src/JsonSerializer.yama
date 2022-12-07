@@ -6,14 +6,49 @@ namespace "System.Text"
     public static class JsonSerializer
     {
 
-        public static object DeSerialize(RefString source, TypeInfo type)
+        public static object? DeSerialize(RefString source, TypeInfo type)
         {
 
+            JsonTokenizer tokenizer = JsonTokenizer.Initilize(source);
+            if (!tokenizer.NextToken()) return null;
 
+            object result = JsonSerializer.DeSerialize_Object(tokenizer, type);
+
+            return result;
+        }
+
+        private static object? DeSerialize_Object(JsonTokenizer tokenizer, TypeInfo type)
+        {
+            //RefString validToken = tokenizer.GetCurrent();
+            if (tokenizer.TokenKind == JsonTokenKind.Null) return null;
+            if (tokenizer.TokenKind != JsonTokenKind.OpenBracket) return null;
 
             object result = type.GetNewInstance();
 
+            while (tokenizer.NextToken())
+            {
+                if (tokenizer.TokenKind == JsonTokenKind.CloseBracket) return result;
+                if (tokenizer.TokenKind != JsonTokenKind.Text) return null;
+
+                JsonSerializer.DeSerialize_Property(tokenizer, result, type);
+            }
+
             return result;
+        }
+
+        private static bool DeSerialize_Property(JsonTokenizer tokenizer, &object data, TypeInfo type)
+        {
+            if (tokenizer.TokenKind != JsonTokenKind.Text) return false;
+
+            RefString propName = tokenizer.GetCurrent();
+
+            PropertyInfo propInfo = type.Find(propName);
+            if (propInfo is null) return true;
+
+            if (!tokenizer.NextToken()) return false;
+            if (tokenizer.TokenKind != JsonTokenKind.AssigmentOperator) return false;
+
+            return true;
         }
 
     }
@@ -109,5 +144,6 @@ namespace "System.Text"
         Number = 0x6,
         Boolean = 0x7,
         AssigmentOperator = 0x8
+        Null = 0x9
     }
 }
