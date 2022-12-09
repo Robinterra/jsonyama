@@ -27,6 +27,7 @@ namespace "System.Text"
 
             while (tokenizer.NextToken())
             {
+                if (tokenizer.TokenKind == JsonTokenKind.Comma) continue;
                 if (tokenizer.TokenKind == JsonTokenKind.CloseBracket) return result;
                 if (tokenizer.TokenKind != JsonTokenKind.Text) return null;
 
@@ -36,7 +37,17 @@ namespace "System.Text"
             return result;
         }
 
-        private static bool DeSerialize_Property(JsonTokenizer tokenizer, &object data, TypeInfo type)
+        private static bool IsValueCorrectType(int propType, int tokenKind)
+        {
+            if (propType == TypeArten.Int) return tokenKind == JsonTokenKind.Number;
+            if (propType == TypeArten.String) return tokenKind == JsonTokenKind.Text;
+            if (propType == TypeArten.Object) return tokenKind == JsonTokenKind.OpenBracket;
+            if (propType == TypeArten.Bool) return tokenKind == JsonTokenKind.Boolean;
+
+            return false;
+        }
+
+        private static bool DeSerialize_Property(JsonTokenizer tokenizer, &object instance, TypeInfo type)
         {
             if (tokenizer.TokenKind != JsonTokenKind.Text) return false;
 
@@ -47,6 +58,32 @@ namespace "System.Text"
 
             if (!tokenizer.NextToken()) return false;
             if (tokenizer.TokenKind != JsonTokenKind.AssigmentOperator) return false;
+            if (!tokenizer.NextToken()) return false;
+
+            bool isok = JsonSerializer.IsValueCorrectType(propInfo.TypeArt, tokenizer.TokenKind);
+            if (!isok) return false;
+
+            int propType = propInfo.TypeArt;
+            RefString inputToken = tokenizer.GetCurrent();
+
+            if (propType == TypeArten.Object)
+            {
+                int data = (JsonSerializer.DeSerialize_Object(tokenizer, propInfo.Type)) as int;
+                propInfo.SetValue(instance, data);
+                return true;
+            }
+
+            if (propType == TypeArten.Int) return JsonSerializer.SetPropertyWithInt(instance, inputToken, propInfo);
+
+            return false;
+        }
+
+        private static bool SetPropertyWithInt(&object instance, RefString inputZahl, PropertyInfo propInfo)
+        {
+            IntParseResult parseResult = int.Parse(inputZahl);
+            if (!parseResult.IsSuccess) return false;
+
+            propInfo.SetValue(instance, parseResult.Result);
 
             return true;
         }
@@ -92,7 +129,52 @@ namespace "System.Text"
             {
                 char content = (iterator.Data[i]) as char;
                 if (content.IsWhitespace()) continue;
-                if (content.IsNumber()) return this.FindTokenNumber(i, iterator);
+                if (content.IsNumber()) return this.FindTokenNumber(start + i, iterator);
+
+                int quote = ('\"') as int;
+                if (quote == content) return this.FindTokenText(start + i, iterator);
+
+                quote = ('{') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.OpenBracket);
+
+                quote = ('}') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.CloseBracket);
+
+                quote = (',') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.Comma);
+
+                quote = (':') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.AssigmentOperator);
+            }
+
+            return false;
+        }
+
+        private bool FindStandAloneToken(int start, int tokenKind)
+        {
+            this.Start = start;
+
+            this.TokenKind =tokenKind;
+            this.TokenLength = 1;
+
+            return true;
+        }
+
+        private bool FindTokenText(int start, RefString iterator)
+        {
+            this.Start = start;
+            iterator.Start = this.Start;
+
+            this.TokenKind = JsonTokenKind.Text;
+
+            int length = this.Length - start;
+
+            this.TokenLength = 1;
+            for (int i = 1; i < length; i = i + 1)
+            {
+                this.TokenLength = this.TokenLength + 1;
+                char quote = '\"';
+                if (quote.IsEquals(iterator, i)) return true;
             }
 
             return false;
@@ -100,12 +182,12 @@ namespace "System.Text"
 
         private bool FindTokenNumber(int start, RefString iterator)
         {
-            this.Start = this.Start + start;
+            this.Start = start;
             iterator.Start = this.Start;
 
             this.TokenKind = JsonTokenKind.Number;
 
-            int length = iterator.Length - start;
+            int length = this.Length - start;
             this.TokenLength = 0;
             for (int i = 0; i < length; i = i + 1)
             {
