@@ -256,6 +256,35 @@ namespace "System.Text"
             return Result;
         }
 
+        public char GetEscapeValue(int value)
+        {
+            if (value == 'n') return '\n';
+            if (value == '\\') return '\\';
+            if (value == '\"') return '\"';
+
+            return ' ';
+        }
+
+        public String GetEscapedText(RefString toEscapeString)
+        {
+            int length = toEscapeString.Length;
+            string result = string.New[length];
+            int realLength = 0;
+
+            for (int i = 0; i < length; i = i + 1)
+            {
+                int value = toEscapeString.Data[i];
+                if (value == '\\') i = i + 1;
+
+                result.Data[realLength] = toEscapeString.Data[i];
+                realLength = realLength + 1;
+            }
+
+            result.Length = realLength;
+
+            return new String(result);
+        }
+
         public this ~()
         {
 
