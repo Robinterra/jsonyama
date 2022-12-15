@@ -41,7 +41,11 @@ namespace "System.Text"
             if (propType == TypeArten.Int) return tokenKind == JsonTokenKind.Number;
             if (propType == TypeArten.String) return tokenKind == JsonTokenKind.Text;
             if (propType == TypeArten.Object) return tokenKind == JsonTokenKind.OpenBracket;
-            if (propType == TypeArten.Bool) return tokenKind == JsonTokenKind.Boolean;
+            if (propType == TypeArten.Bool)
+            {
+                if (tokenKind == JsonTokenKind.False) return true;
+                return tokenKind == JsonTokenKind.True;
+            }
 
             return false;
         }
@@ -72,11 +76,13 @@ namespace "System.Text"
             }
 
             if (propType == TypeArten.Int) return JsonSerializer.SetPropertyWithInt(instance, inputToken, propInfo);
-            if (propType == TypeArt.Bool)
+            if (propType == TypeArten.Bool)
             {
-                if (tokenizer.TokenKind == JsonTokenKind.True) return propInfo.SetValue(instance, true);
-                if (tokenizer.TokenKind == JsonTokenKind.False) return propInfo.SetValue(instance, false);
+                if (tokenizer.TokenKind == JsonTokenKind.True) return propInfo.SetValue(instance, true as int);
+                if (tokenizer.TokenKind == JsonTokenKind.False) return propInfo.SetValue(instance, false as int);
             }
+
+            if (propType == TypeArten.String) return JsonSerializer.SetPropertyWithString(instance, inputToken, propInfo);
 
             return false;
         }
@@ -87,6 +93,15 @@ namespace "System.Text"
             if (!parseResult.IsSuccess) return false;
 
             propInfo.SetValue(instance, parseResult.Result);
+
+            return true;
+        }
+
+        private static bool SetPropertyWithString(&object instance, RefString inputText, PropertyInfo propInfo)
+        {
+            int dataResult = (JsonTokenizer.GetEscapedText(inputText)) as int;
+
+            propInfo.SetValue(instance, dataResult as int);
 
             return true;
         }
@@ -265,13 +280,13 @@ namespace "System.Text"
             return ' ';
         }
 
-        public String GetEscapedText(RefString toEscapeString)
+        public static String GetEscapedText(RefString toEscapeString)
         {
-            int length = toEscapeString.Length;
+            int length = toEscapeString.Length - 1;
             string result = string.New[length];
             int realLength = 0;
 
-            for (int i = 0; i < length; i = i + 1)
+            for (int i = 1; i < length; i = i + 1)
             {
                 int value = toEscapeString.Data[i];
                 if (value == '\\') i = i + 1;
