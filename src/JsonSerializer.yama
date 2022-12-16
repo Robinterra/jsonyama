@@ -36,6 +36,26 @@ namespace "System.Text"
             return result;
         }
 
+        private static object? DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
+        {
+            if (tokenizer.TokenKind == JsonTokenKind.Null) return null;
+            if (tokenizer.TokenKind != JsonTokenKind.OpenSquareBracket) return null;
+
+            List<object> result = new List<object>();
+
+            while (tokenizer.NextToken())
+            {
+                if (tokenizer.TokenKind == JsonTokenKind.Comma) continue;
+                if (tokenizer.TokenKind == JsonTokenKind.CloseSquareBracket) return result;
+
+                object item = JsonSerializer.DeSerialize_Object(tokenizer, type);
+
+                result.Add(item);
+            }
+
+            return result;
+        }
+
         private static bool IsValueCorrectType(int propType, int tokenKind)
         {
             if (propType == TypeArten.Int) return tokenKind == JsonTokenKind.Number;
@@ -46,6 +66,7 @@ namespace "System.Text"
                 if (tokenKind == JsonTokenKind.False) return true;
                 return tokenKind == JsonTokenKind.True;
             }
+            if (propType == TypeArten.List) return tokenKind == JsonTokenKind.OpenSquareBracket;
 
             return false;
         }
@@ -72,6 +93,12 @@ namespace "System.Text"
             if (propType == TypeArten.Object)
             {
                 int data = (JsonSerializer.DeSerialize_Object(tokenizer, propInfo.Type)) as int;
+                return propInfo.SetValue(instance, data);
+            }
+
+            if (propType == TypeArten.List)
+            {
+                int data = (JsonSerializer.DeSerialize_List(tokenizer, propInfo.Type)) as int;
                 return propInfo.SetValue(instance, data);
             }
 
@@ -157,6 +184,12 @@ namespace "System.Text"
 
                 quote = ('}') as int;
                 if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.CloseBracket);
+
+                quote = ('[') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.OpenSquareBracket);
+
+                quote = (']') as int;
+                if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.CloseSquareBracket);
 
                 quote = (',') as int;
                 if (quote == content) return this.FindStandAloneToken(start + i, JsonTokenKind.Comma);
@@ -319,5 +352,8 @@ namespace "System.Text"
         AssigmentOperator = 0x8
         Null = 0x9,
         False = 0xa,
+        OpenSquareBracket = 0xb,
+        CloseSquareBracket = 0xc,
     }
+
 }
