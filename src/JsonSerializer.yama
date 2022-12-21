@@ -6,38 +6,39 @@ namespace "System.Text"
     public static class JsonSerializer
     {
 
-        public static object? DeSerialize(RefString source, TypeInfo type)
+        public static JsonDeserilaizeResponse DeSerialize(RefString source, TypeInfo type)
         {
 
             JsonTokenizer tokenizer = JsonTokenizer.Initilize(source);
-            if (!tokenizer.NextToken()) return null;
+            if (!tokenizer.NextToken()) return JsonDeserilaizeResponse.Failed("failed to pick first token", tokenizer);
 
-            object result = JsonSerializer.DeSerialize_Object(tokenizer, type);
-
-            return result;
+            return JsonSerializer.DeSerialize_Object(tokenizer, type);
         }
 
-        private static object? DeSerialize_Object(JsonTokenizer tokenizer, TypeInfo type)
+        private static JsonDeserilaizeResponse DeSerialize_Object(JsonTokenizer tokenizer, TypeInfo type)
         {
-            if (tokenizer.TokenKind == JsonTokenKind.Null) return null;
-            if (tokenizer.TokenKind != JsonTokenKind.OpenBracket) return null;
+            if (tokenizer.TokenKind == JsonTokenKind.Null) return JsonDeserilaizeResponse.Ok(null);
+            if (tokenizer.TokenKind != JsonTokenKind.OpenBracket) return JsonDeserilaizeResponse.Failed("Expectet a '{' Token", tokenizer);
 
             object result = type.GetNewInstance();
 
             while (tokenizer.NextToken())
             {
                 if (tokenizer.TokenKind == JsonTokenKind.Comma) continue;
-                if (tokenizer.TokenKind == JsonTokenKind.CloseBracket) return result;
-                if (tokenizer.TokenKind != JsonTokenKind.Text) return null;
+                if (tokenizer.TokenKind == JsonTokenKind.CloseBracket) return JsonDeserilaizeResponse.Ok(result);
+                if (tokenizer.TokenKind != JsonTokenKind.Text) return JsonDeserilaizeResponse.Failed("Expectet a Text Token", tokenizer);
 
-                JsonSerializer.DeSerialize_Property(tokenizer, result, type);
+                bool isok = JsonSerializer.DeSerialize_Property(tokenizer, result, type);
+                if (!isok) return JsonDeserilaizeResponse.Failed("Property Value can not be Parsed", tokenizer);
             }
 
-            return result;
+            return JsonDeserilaizeResponse.Ok(result);
         }
 
         private static object? DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
         {
+            JsonDeserilaizeResponse response = JsonDeserilaizeResponse.Init();
+
             if (tokenizer.TokenKind == JsonTokenKind.Null) return null;
             if (tokenizer.TokenKind != JsonTokenKind.OpenSquareBracket) return null;
 
@@ -48,8 +49,10 @@ namespace "System.Text"
                 if (tokenizer.TokenKind == JsonTokenKind.Comma) continue;
                 if (tokenizer.TokenKind == JsonTokenKind.CloseSquareBracket) return result;
 
-                object item = JsonSerializer.DeSerialize_Object(tokenizer, type);
+                response = JsonSerializer.DeSerialize_Object(tokenizer, type);
+                if (!response.IsSuccess) return null;
 
+                object item = response.Result;
                 result.Add(item);
             }
 
@@ -73,6 +76,7 @@ namespace "System.Text"
 
         private static bool DeSerialize_Property(JsonTokenizer tokenizer, &object instance, TypeInfo type)
         {
+            JsonDeserilaizeResponse response = JsonDeserilaizeResponse.Init();
             if (tokenizer.TokenKind != JsonTokenKind.Text) return false;
 
             RefString propName = tokenizer.GetCurrentTextToken();
@@ -90,9 +94,14 @@ namespace "System.Text"
             int propType = propInfo.TypeArt;
             RefString inputToken = tokenizer.GetCurrent();
 
+            response = JsonDeserilaizeResponse.Ok(null);
             if (propType == TypeArten.Object)
             {
-                int data = (JsonSerializer.DeSerialize_Object(tokenizer, propInfo.Type)) as int;
+                response = JsonSerializer.DeSerialize_Object(tokenizer, propInfo.Type);
+                if (!response.IsSuccess) return false;
+
+                int data = (response.GetResult()) as int;
+
                 return propInfo.SetValue(instance, data);
             }
 
@@ -144,6 +153,8 @@ namespace "System.Text"
         public int Length;
         public int TokenLength;
         public string Source;
+        public int Line;
+        public int Column;
 
         public int TokenKind;
 
@@ -156,6 +167,7 @@ namespace "System.Text"
             Result.Length = source.Length;
             Result.TokenLength = 0;
             Result.TokenKind = JsonTokenKind.None;
+            Result.Line = 1;
 
             return Result;
         }
@@ -173,6 +185,13 @@ namespace "System.Text"
             for (int i = 0; i < length; i = i + 1)
             {
                 char content = (iterator.Data[i]) as char;
+
+                int lineBreak = ('\n') as int;
+                if (lineBreak == content)
+                {
+                    this.Line = this.Line + 1;
+                    this.Column = 0;
+                }
                 if (content.IsWhitespace()) continue;
                 if (content.IsNumber()) return this.FindTokenNumber(start + i, iterator);
 
@@ -205,6 +224,8 @@ namespace "System.Text"
 
                 quote = ('f') as int;
                 if (quote == content) return this.FindWordToken(start + i, JsonTokenKind.False, "false", iterator);
+
+                return this.FindStandAloneToken(start + i, JsonTokenKind.Error);
             }
 
             return false;
@@ -216,6 +237,8 @@ namespace "System.Text"
 
             this.TokenKind =tokenKind;
             this.TokenLength = 1;
+
+            this.Column = this.Column + 1;
 
             return true;
         }
@@ -234,6 +257,8 @@ namespace "System.Text"
                 if (currentChar != expectetChar) return false;
                 this.TokenLength = this.TokenLength + 1;
             }
+
+            this.Column = this.Column + length;
 
             this.TokenKind = tokenKind;
 
@@ -282,6 +307,8 @@ namespace "System.Text"
 
                 this.TokenLength = this.TokenLength + 1;
             }
+
+            this.Column = this.Column + this.TokenLength;
 
             return true;
         }
@@ -340,6 +367,70 @@ namespace "System.Text"
 
     }
 
+    public struct JsonDeserilaizeResponse
+    {
+
+        #region vars
+
+        public object Result;
+
+        public bool IsSuccess;
+
+        public string Message;
+
+        public int Line;
+
+        public int Column;
+
+        #endregion vars
+
+        #region ctor
+
+        public this ~()
+        {
+
+        }
+
+        #endregion ctor
+
+        #region methods
+
+        public object? GetResult()
+        {
+            object res = this.Result;
+
+            return res;
+        }
+
+        public static JsonDeserilaizeResponse Init()
+        {
+            Result.Result = (null) as object;
+
+            return Result;
+        }
+
+        public static JsonDeserilaizeResponse Ok(object result?)
+        {
+            Result.Result = result;
+            Result.IsSuccess = true;
+
+            return Result;
+        }
+
+        public static JsonDeserilaizeResponse Failed(string msg, JsonTokenizer tokenizer)
+        {
+            Result.IsSuccess = false;
+            Result.Message = msg;
+            Result.Line = tokenizer.Line;
+            Result.Column = tokenizer.Column;
+            Result.Result = (null) as object;
+
+            return Result;
+        }
+
+        #endregion methods
+    }
+
     public enum JsonTokenKind
     {
         None = 0x1,
@@ -354,6 +445,8 @@ namespace "System.Text"
         False = 0xa,
         OpenSquareBracket = 0xb,
         CloseSquareBracket = 0xc,
+        Error = 0xd,
     }
+
 
 }
