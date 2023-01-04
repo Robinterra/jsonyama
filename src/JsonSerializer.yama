@@ -6,6 +6,14 @@ namespace "System.Text"
     public static class JsonSerializer
     {
 
+        public static bool Serialize(&Stream stream, &object instance, TypeInfo type)
+        {
+
+            JsonSerializer.Serialize_Object(stream, instance, type);
+
+            return true;
+        }
+
         public static JsonDeserilaizeResponse DeSerialize(RefString source, TypeInfo type)
         {
 
@@ -14,6 +22,164 @@ namespace "System.Text"
 
             return JsonSerializer.DeSerialize_Object(tokenizer, type);
         }
+
+        #region serialize
+
+        private static bool Serialize_Object(&Stream stream, &object instance, TypeInfo type)
+        {
+            stream.Write('{');
+
+            int length = type.PropertiesCount;
+            for (int i = 0; i < length; i = i + 1)
+            {
+                PropertyInfo info = type.Properties[i];
+
+                JsonSerializer.Serialize_Property(stream, instance, info);
+                if (length == i + 1) continue;
+
+                stream.Write(',');
+            }
+            if (stream is null) return false;
+
+            stream.Write('}');
+
+            return true;
+        }
+
+        private static bool Serialize_ValueString(&Stream stream, &String value)
+        {
+            stream.Write('"');
+
+            string content = value.Content;
+            int length = content.Length;
+            for (int i = 0; i < length; i = i + 1)
+            {
+                char currentValue = (content.Data[i]) as char;
+
+                int sign = ('\n') as int;
+                if (sign == currentValue)
+                {
+                    stream.Write("\\n");
+                    continue;
+                }
+
+                sign = ('"') as int;
+                if (sign == currentValue)
+                {
+                    stream.Write("\\\"");
+                    continue;
+                }
+
+                sign = ('\\') as int;
+                if (sign == currentValue)
+                {
+                    stream.Write("\\\\");
+                    continue;
+                }
+
+                stream.Write(currentValue);
+            }
+            if (stream is null) return false;
+
+            stream.Write('"');
+
+            return true;
+        }
+
+        private static bool Serialize_List(&Stream stream, &List<object> liste, TypeInfo type)
+        {
+            stream.Write('[');
+
+            int length = liste.Length;
+            for (int i = 0; i < length; i = i + 1)
+            {
+                &object item = liste.Get(i);
+                if (item is null) continue;
+
+                JsonSerializer.Serialize_Object(stream, item, type);
+
+                if (length == i + 1) continue;
+                stream.Write(',');
+            }
+            if (stream is null) return false;
+
+            stream.Write(']');
+        }
+
+        private static bool Serialize_Int(&Stream stream, int value)
+        {
+            int length = 1;
+            int number = value + 0;
+
+            for (int count = 0; count != 8; count = count + 1)
+            {
+                int sheep = count << 2;
+                int current = number >> sheep;
+
+                if (current is null) break;
+                if (count is null) continue;
+                length = length + 1;
+            }
+            if (stream is null) return false;
+
+            for (int i = 0; length != 0; i = i + 1)
+            {
+                length = length - 1;
+
+                int sheep = length << 2;
+                int current = number >> sheep;
+
+                int adder = 0x30;
+                int segment = current & 0xf;
+                if (segment > 9) adder = 0x57;
+                char currentSign = (adder + segment) as char;
+                stream.Write(currentSign);
+            }
+
+            return true;
+        }
+
+        private static bool Serialize_Property(&Stream stream, &object instance, PropertyInfo info)
+        {
+            stream.Write('"');
+            stream.Write(info.Name);
+            stream.Write("\":");
+
+            int propType = info.TypeArt;
+            int value = info.GetValue(instance);
+            if (propType == TypeArten.Object)
+            {
+                &object valueObj = (value) as object;
+                return JsonSerializer.Serialize_Object(stream, valueObj, info.Type);
+            }
+
+            if (propType == TypeArten.List)
+            {
+                &List<object> valueList = (value) as List;
+                return JsonSerializer.Serialize_List(stream, valueList, info.Type);
+            }
+
+            if (propType == TypeArten.Int) return JsonSerializer.Serialize_Int(stream, value);
+
+            if (propType == TypeArten.Bool)
+            {
+                bool valueBool = (value) as bool;
+                if (valueBool) return stream.Write("true");
+                return stream.Write("false");
+            }
+
+            if (propType == TypeArten.String)
+            {
+                &String valueStr = (value) as String;
+                return JsonSerializer.Serialize_ValueString(stream, valueStr);
+            }
+
+            return true;
+        }
+
+        #endregion serialize
+
+        #region deserialize
 
         private static JsonDeserilaizeResponse DeSerialize_Object(JsonTokenizer tokenizer, TypeInfo type)
         {
@@ -141,6 +307,8 @@ namespace "System.Text"
 
             return true;
         }
+
+        #endregion deserialize
 
     }
 
@@ -447,6 +615,5 @@ namespace "System.Text"
         CloseSquareBracket = 0xc,
         Error = 0xd,
     }
-
 
 }
