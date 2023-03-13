@@ -111,8 +111,8 @@ namespace "System.Text"
             int length = 1;
             int number = value + 0;
 
-            stream.Write(0x30);
-            stream.Write(0x78);
+            stream.Write(0x30 as char);
+            stream.Write(0x78 as char);
 
             for (int count = 0; count != 8; count = count + 1)
             {
