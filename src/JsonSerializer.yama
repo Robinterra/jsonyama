@@ -111,6 +111,9 @@ namespace "System.Text"
             int length = 1;
             int number = value + 0;
 
+            stream.Write(0x30);
+            stream.Write(0x78);
+
             for (int count = 0; count != 8; count = count + 1)
             {
                 int sheep = count << 2;
@@ -471,6 +474,11 @@ namespace "System.Text"
             for (int i = 0; i < length; i = i + 1)
             {
                 char content = (iterator.Data[i]) as char;
+                if (0x78 == content)
+                {
+                    this.TokenLength = this.TokenLength + 1;
+                    continue;
+                }
                 if (!content.IsNumber()) break;
 
                 this.TokenLength = this.TokenLength + 1;
