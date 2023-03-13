@@ -474,12 +474,14 @@ namespace "System.Text"
             for (int i = 0; i < length; i = i + 1)
             {
                 char content = (iterator.Data[i]) as char;
-                if (0x78 == content)
+
+                bool isok = content.IsNumber();
+                if (!isok) isok = 0x78 == content;
+                if (!isok)
                 {
-                    this.TokenLength = this.TokenLength + 1;
-                    continue;
+                    if (0x61 > content) break;
+                    if (0x66 < content) break;
                 }
-                if (!content.IsNumber()) break;
 
                 this.TokenLength = this.TokenLength + 1;
             }
