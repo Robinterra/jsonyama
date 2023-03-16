@@ -204,12 +204,12 @@ namespace "System.Text"
             return JsonDeserilaizeResponse.Ok(result);
         }
 
-        private static object? DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
+        private static JsonDeserilaizeResponse DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
         {
             JsonDeserilaizeResponse response = JsonDeserilaizeResponse.Init();
 
-            if (tokenizer.TokenKind == JsonTokenKind.Null) return null;
-            if (tokenizer.TokenKind != JsonTokenKind.OpenSquareBracket) return null;
+            if (tokenizer.TokenKind == JsonTokenKind.Null) return JsonDeserilaizeResponse.Ok(null);
+            if (tokenizer.TokenKind != JsonTokenKind.OpenSquareBracket) return JsonDeserilaizeResponse.Failed("feher", tokenizer);
 
             List<object> result = new List<object>();
 
@@ -219,13 +219,13 @@ namespace "System.Text"
                 if (tokenizer.TokenKind == JsonTokenKind.CloseSquareBracket) return result;
 
                 response = JsonSerializer.DeSerialize_Object(tokenizer, type);
-                if (!response.IsSuccess) return null;
+                if (!response.IsSuccess) return JsonDeserilaizeResponse.Failed("feher", tokenizer);
 
                 object item = response.Result;
                 result.Add(item);
             }
 
-            return result;
+            return JsonDeserilaizeResponse.Ok(result);
         }
 
         private static bool IsValueCorrectType(int propType, int tokenKind)
@@ -276,7 +276,10 @@ namespace "System.Text"
 
             if (propType == TypeArten.List)
             {
-                int data = (JsonSerializer.DeSerialize_List(tokenizer, propInfo.Type)) as int;
+                response = JsonSerializer.DeSerialize_List(tokenizer, propInfo.Type);
+                if (!response.IsSuccess) return false;
+
+                int data = (response.GetResult()) as int;
                 return propInfo.SetValue(instance, data);
             }
 
