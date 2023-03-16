@@ -216,7 +216,7 @@ namespace "System.Text"
             while (tokenizer.NextToken())
             {
                 if (tokenizer.TokenKind == JsonTokenKind.Comma) continue;
-                if (tokenizer.TokenKind == JsonTokenKind.CloseSquareBracket) return result;
+                if (tokenizer.TokenKind == JsonTokenKind.CloseSquareBracket) return JsonDeserilaizeResponse.Ok(result);
 
                 response = JsonSerializer.DeSerialize_Object(tokenizer, type);
                 if (!response.IsSuccess) return JsonDeserilaizeResponse.Failed("feher", tokenizer);
