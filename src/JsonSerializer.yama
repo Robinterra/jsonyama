@@ -251,16 +251,14 @@ namespace "System.Text"
             RefString propName = tokenizer.GetCurrentTextToken();
 
             PropertyInfo propInfo = type.Find(propName);
+            if (propInfo is null) return true;
 
             if (!tokenizer.NextToken()) return false;
             if (tokenizer.TokenKind != JsonTokenKind.AssigmentOperator) return false;
             if (!tokenizer.NextToken()) return false;
 
-            if (propInfo isnot null)
-            {
-                bool isok = JsonSerializer.IsValueCorrectType(propInfo.TypeArt, tokenizer.TokenKind);
-                if (!isok) return false;
-            }
+            bool isok = JsonSerializer.IsValueCorrectType(propInfo.TypeArt, tokenizer.TokenKind);
+            if (!isok) return false;
 
             int propType = propInfo.TypeArt;
             RefString inputToken = tokenizer.GetCurrent();
@@ -273,7 +271,6 @@ namespace "System.Text"
 
                 int data = (response.GetResult()) as int;
 
-                if (propInfo is null) return true;
                 return propInfo.SetValue(instance, data);
             }
 
@@ -283,12 +280,9 @@ namespace "System.Text"
                 if (!response.IsSuccess) return false;
 
                 int data = (response.GetResult()) as int;
-
-                if (propInfo is null) return true;
                 return propInfo.SetValue(instance, data);
             }
 
-            if (propInfo is null) return true;
             if (propType == TypeArten.Int) return JsonSerializer.SetPropertyWithInt(instance, inputToken, propInfo);
             if (propType == TypeArten.Bool)
             {
