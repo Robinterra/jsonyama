@@ -206,7 +206,7 @@ namespace "System.Text"
 
         private static JsonDeserilaizeResponse DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
         {
-            JsonDeserilaizeResponse response = JsonDeserilaizeResponse.Init();
+            let JsonDeserilaizeResponse response;
 
             if (tokenizer.TokenKind == JsonTokenKind.Null) return JsonDeserilaizeResponse.Ok(null);
             if (tokenizer.TokenKind != JsonTokenKind.OpenSquareBracket) return JsonDeserilaizeResponse.Failed("feher", tokenizer);
@@ -245,7 +245,7 @@ namespace "System.Text"
 
         private static bool DeSerialize_Property(JsonTokenizer tokenizer, &object instance, TypeInfo type)
         {
-            JsonDeserilaizeResponse response = JsonDeserilaizeResponse.Init();
+            let JsonDeserilaizeResponse response;
             if (tokenizer.TokenKind != JsonTokenKind.Text) return false;
 
             RefString propName = tokenizer.GetCurrentTextToken();
