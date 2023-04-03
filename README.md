@@ -44,9 +44,7 @@ namespace "Program"
 
             // Serialisierung
             MemoryStream stream = new MemoryStream();
-            &Stream s = (stream) as Stream;
-            &object obj = (t) as object;
-            JsonSerializer.Serialize(s, obj, typ);
+            JsonSerializer.Serialize(stream, t, typ);
 
             // Ausgabe in der Console
             RefString refs = stream.ToRefString();
@@ -71,16 +69,17 @@ namespace "Program"
                 return 1;
             }
 
-            Tester tt = (te.Result) as Tester;
+            Tester tt = te.Result as Tester;
             if (tt is null)
             {
                 Console.Print("null");
                 return 2;
             }
 
-            &String ss = tt.Text;
-            if (ss is null) return 1;
-            Console.PrintLine(ss.Content);
+            &String text = tt.Text;
+            if (text is null) return 1;
+
+            Console.PrintLine(text.Content);
 
             if (tt.Wisdom == 0x42) Console.PrintLine("yeeeaj");
 
