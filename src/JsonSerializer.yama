@@ -201,7 +201,7 @@ namespace "System.Text"
                 if (!isok) return JsonDeserilaizeResponse.Failed("Property Value can not be Parsed", tokenizer);
             }
 
-            return JsonDeserilaizeResponse.Ok(result);
+            return JsonDeserilaizeResponse.Failed("Unexpected object end", tokenizer);
         }
 
         private static JsonDeserilaizeResponse DeSerialize_List(JsonTokenizer tokenizer, TypeInfo type)
@@ -225,7 +225,7 @@ namespace "System.Text"
                 result.Add(item);
             }
 
-            return JsonDeserilaizeResponse.Ok(result);
+            return JsonDeserilaizeResponse.Failed("unexpected list end", tokenizer);
         }
 
         private static bool IsValueCorrectType(int propType, int tokenKind)
